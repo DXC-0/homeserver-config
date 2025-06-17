@@ -1,0 +1,52 @@
+version: "3.9"
+services:
+  vpn:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 8080:8080
+      - 54435:54435
+      - 49570:49570/udp # port generated in gluten/info/forwarded_port
+    volumes:
+      - ./gluetun:/gluetun
+      - ./gluetun/info:/tmp/gluetun
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TZ=America/New_York
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - VPN_PORT_FORWARDING=on
+      - VPN_PORT_FORWARDING_PROVIDER=protonvpn
+      - VPN_ENDPOINT_IP=196.196.203.202
+      - VPN_ENDPOINT_PORT=51820
+      - WIREGUARD_PUBLIC_KEY=
+      - WIREGUARD_PRIVATE_KEY=
+      - WIREGUARD_ADDRESSES=10.2.0.2/32
+      - BLOCK_MALICIOUS=off
+      - BLOCK_SURVEILLANCE=off
+      - BLOCK_ADS=off
+      - DOT=off
+      - VPN_PORT_FORWARDING=on
+
+  torrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: torrent
+    restart: unless-stopped
+    network_mode: "service:vpn"
+    environment:
+      - WEBUI_PORT=8080
+      - TZ=America/New_York
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - ./config:/config
+      - /mnt/raid/media/torrents:/downloads
+    depends_on:
+      - vpn
+    read_only: true
+    tmpfs:
+      - /run:exec
