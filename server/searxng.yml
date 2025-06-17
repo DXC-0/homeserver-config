@@ -1,0 +1,66 @@
+services:
+  vpnsearxng:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun_searxng
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./gluetun:/gluetun
+      - ./gluetun/info:/tmp/gluetun
+    ports:
+      - 9595:8080
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TZ=America/New_York
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - VPN_PORT_FORWARDING=off
+      - VPN_PORT_FORWARDING_PROVIDER=protonvpn
+      - VPN_ENDPOINT_IP=5.253.204.194
+      - VPN_ENDPOINT_PORT=51820
+      - WIREGUARD_PUBLIC_KEY=
+      - WIREGUARD_PRIVATE_KEY=
+      - WIREGUARD_ADDRESSES=10.2.0.2/32
+      - BLOCK_MALICIOUS=off
+      - BLOCK_SURVEILLANCE=on
+      - BLOCK_ADS=off
+      - DOT=off
+      - VPN_PORT_FORWARDING=off
+
+  searxng:
+        image: elestio/searxng:latest
+        restart: always
+        volumes:
+            - ./data:/etc/searxng:rw
+        environment:
+            - SEARXNG_BASE_URL=https://${DOMAIN}/
+        cap_drop:
+            - ALL
+        cap_add:
+            - CHOWN
+            - SETGID
+            - SETUID
+            - DAC_OVERRIDE
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "1m"
+                max-file: "1"
+        network_mode: "service:vpnsearxng"
+        depends_on:
+            - vpnsearxng
+
+  redis:
+        image: "redis:alpine"
+        restart: always
+        command: redis-server --save "" --appendonly "no"
+        tmpfs:
+            - /var/lib/redis
+        cap_drop:
+            - ALL
+        cap_add:
+            - SETGID
+            - SETUID
+            - DAC_OVERRIDE
